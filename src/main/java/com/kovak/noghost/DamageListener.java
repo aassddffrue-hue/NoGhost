@@ -6,6 +6,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.util.Vector;
+import org.bukkit.Location;
 
 public class DamageListener implements Listener {
 
@@ -15,7 +16,7 @@ public class DamageListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onDamage(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player)) return;
         if (!(event.getEntity() instanceof Player)) return;
@@ -23,30 +24,44 @@ public class DamageListener implements Listener {
         Player attacker = (Player) event.getDamager();
         Player victim = (Player) event.getEntity();
 
-        double damage = event.getDamage();
-        
-        if (damage > 0) {
-            // 1. إلغاء التأخير (No Damage Ticks) عشان كل ضربة تنحسب
+        Location attackerLoc = attacker.getLocation();
+        Location victimLoc = victim.getLocation();
+        double distance = attackerLoc.distance(victimLoc);
+
+        // التأكد من المسافة (4.5 بلوك للبراكتس)
+        if (distance <= plugin.getConfig().getDouble("max-hit-distance", 4.5)) {
+            
+            // إجبار السيرفر على قبول الضربة
+            event.setCancelled(false);
+            
+            // إلغاء التأخير (Invincibility frames) عشان الكومبو
             if (plugin.getConfig().getBoolean("remove-invincibility-frames", true)) {
-                victim.setNoDamageTicks(0); 
+                victim.setNoDamageTicks(0);
             }
 
-            // 2. التأكد من حساب الضربة حتى لو كان اللاعب في السماء
-            if (plugin.getConfig().getBoolean("force-damage", true)) {
-                double distance = attacker.getLocation().distance(victim.getLocation());
-                double maxDist = plugin.getConfig().getDouble("max-hit-distance", 6.0);
+            // فحص إذا اللاعب في السماء (Air Hit Fix)
+            boolean isVictimInAir = !victim.isOnGround();
+            boolean isFlying = victim.isFlying() || victim.isGliding();
+            
+            if (isVictimInAir || isFlying) {
+                double baseDamage = event.getDamage();
+                if (baseDamage < 1.0) baseDamage = 1.0; 
                 
-                if (distance <= maxDist) {
-                    event.setDamage(damage);
-                }
+                // إرسال الضرر مباشرة (Bypass)
+                victim.damage(baseDamage, attacker);
+                event.setCancelled(false);
             }
+        }
+
+        // التأكد من اتجاه النظر لمنع Ghost Hits
+        Vector toVictim = victimLoc.toVector().subtract(attackerLoc.toVector());
+        
+        if (toVictim.lengthSquared() > 0) {
+            toVictim.normalize();
+            Vector attackerDirection = attackerLoc.getDirection().normalize();
             
-            // 3. التغلب على الـ Ghost Hits
-            Vector direction = attacker.getLocation().getDirection().normalize();
-            Vector toVictim = victim.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize();
-            
-            if (direction.dot(toVictim) > 0.0) {
-                event.setCancelled(false); 
+            if (attackerDirection.dot(toVictim) > -0.1) {
+                event.setCancelled(false);
             }
         }
     }
