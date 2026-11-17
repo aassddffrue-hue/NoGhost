@@ -1,0 +1,9 @@
+# NoGhost Configuration for QuickBox Practice
+# إلغاء التأخير بين الضربات (كومبو أسرع)
+remove-invincibility-frames: true
+
+# ضمان حساب الضربة حتى لو اللاعب في السماء
+force-damage: true
+
+# مسافة الضربة القصوى (الافتراضي 4.5 بلوك للبراكتس)
+max-hit-distance: 4.5
