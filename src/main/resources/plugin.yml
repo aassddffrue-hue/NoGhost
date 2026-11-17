@@ -1,0 +1,6 @@
+name: NoGhost
+version: 1.0
+main: com.kovak.noghost.NoGhost
+api-version: '1.21'
+description: Fixes ghost hits and ensures all damage registers instantly.
+author: Kovak
